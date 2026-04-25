@@ -1,0 +1,52 @@
+{
+  "name": "helux",
+  "version": "0.1.0",
+  "description": "A minimal macOS Electron app for switching between AI chat services.",
+  "author": "Adrish",
+  "main": "electron/main.cjs",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "build": "vite build",
+    "start": "AI_SWITCHBOARD_USE_DIST=1 electron .",
+    "package:mac": "npm run build && electron-builder --mac dir --config.directories.output=/tmp/helux-dist",
+    "make:mac": "npm run build && electron-builder --mac dmg --config.directories.output=/tmp/helux-dist"
+  },
+  "build": {
+    "appId": "com.local.helux",
+    "productName": "Helux",
+    "executableName": "Helux",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "identity": "-",
+      "extendInfo": {
+        "NSBluetoothAlwaysUsageDescription": "Helux may use Bluetooth security keys during sign-in.",
+        "NSBluetoothPeripheralUsageDescription": "Helux may use Bluetooth security keys during sign-in.",
+        "NSCameraUseContinuityCameraDeviceType": true
+      },
+      "target": [
+        "dir",
+        "dmg"
+      ]
+    }
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.0.12",
+    "vite": "^6.2.3",
+    "wait-on": "^8.0.2"
+  }
+}
