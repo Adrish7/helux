@@ -26,7 +26,6 @@ let sidebarVisible = true;
 let chromeOverlayActive = false;
 const providerViews = new Map();
 const configuredPartitions = new Set();
-const authWindows = new Map();
 
 function getPreferencesPath() {
   return path.join(app.getPath("userData"), "preferences.json");
@@ -98,10 +97,6 @@ function getPartition(provider) {
   return BROWSER_PARTITION;
 }
 
-function getProviderOrigin(provider) {
-  return new URL(provider.url).origin;
-}
-
 function configureSession(partition) {
   if (configuredPartitions.has(partition)) return;
 
@@ -119,21 +114,22 @@ function isHttpUrl(url) {
   }
 }
 
-function isGoogleAuthUrl(url) {
-  try {
-    const parsedUrl = new URL(url);
-    return parsedUrl.hostname === "accounts.google.com";
-  } catch {
-    return false;
-  }
-}
-
-function isProviderUrl(provider, url) {
-  try {
-    return new URL(url).origin === getProviderOrigin(provider);
-  } catch {
-    return false;
-  }
+function getChildWindowOptions(provider, partition) {
+  return {
+    width: 980,
+    height: 760,
+    minWidth: 720,
+    minHeight: 560,
+    title: provider.name,
+    backgroundColor: "#fbfaf6",
+    webPreferences: {
+      partition,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      nativeWindowOpen: true
+    }
+  };
 }
 
 function configureChildWindow(childWindow, provider, partition) {
@@ -147,87 +143,19 @@ function configureChildWindow(childWindow, provider, partition) {
 
     return {
       action: "allow",
-      overrideBrowserWindowOptions: {
-        width: 980,
-        height: 760,
-        title: `Sign in to ${provider.name}`,
-        backgroundColor: "#fbfaf6",
-        webPreferences: {
-          partition,
-          contextIsolation: true,
-          nodeIntegration: false,
-          sandbox: true,
-          nativeWindowOpen: true
-        }
-      }
+      overrideBrowserWindowOptions: getChildWindowOptions(provider, partition)
     };
   });
 
   childWindow.webContents.on("did-create-window", (nextWindow) => {
     configureChildWindow(nextWindow, provider, partition);
   });
-}
 
-function createAuthWindow(provider, initialUrl) {
-  const partition = getPartition(provider);
-  configureSession(partition);
-
-  const existingWindow = authWindows.get(provider.id);
-  if (existingWindow && !existingWindow.isDestroyed()) {
-    existingWindow.show();
-    existingWindow.focus();
-    existingWindow.webContents.loadURL(initialUrl);
-    return;
-  }
-
-  const authWindow = new BrowserWindow({
-    parent: mainWindow,
-    width: 980,
-    height: 760,
-    minWidth: 720,
-    minHeight: 560,
-    title: `Sign in to ${provider.name}`,
-    backgroundColor: "#fbfaf6",
-    webPreferences: {
-      partition,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      nativeWindowOpen: true
-    }
-  });
-
-  authWindows.set(provider.id, authWindow);
-  configureChildWindow(authWindow, provider, partition);
-
-  authWindow.on("closed", () => {
-    authWindows.delete(provider.id);
-  });
-
-  authWindow.webContents.on("did-navigate", (_event, url) => {
-    if (isProviderUrl(provider, url)) {
-      const providerView = providerViews.get(provider.id);
-      if (providerView && !providerView.webContents.isDestroyed()) {
-        providerView.webContents.loadURL(provider.url);
-      }
-      setTimeout(() => {
-        if (!authWindow.isDestroyed()) authWindow.close();
-      }, 750);
-    }
-  });
-
-  authWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+  childWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     if (isMainFrame && errorCode !== -3) {
-      console.error(`Auth window failed to load ${provider.name}: ${errorDescription} (${validatedURL})`);
+      console.error(`${provider.name} popup failed to load: ${errorDescription} (${validatedURL})`);
     }
   });
-
-  authWindow.webContents.loadURL(initialUrl);
-}
-
-function openGoogleAuthWindow(event, provider, url) {
-  event.preventDefault();
-  createAuthWindow(provider, url);
 }
 
 function createProviderView(provider) {
@@ -248,25 +176,10 @@ function createProviderView(provider) {
   view.webContents.setUserAgent(CHROME_USER_AGENT);
 
   view.webContents.setWindowOpenHandler(({ url }) => {
-    if (isGoogleAuthUrl(url)) {
-      setImmediate(() => createAuthWindow(provider, url));
-      return { action: "deny" };
-    }
-
     if (isHttpUrl(url)) {
       return {
         action: "allow",
-        overrideBrowserWindowOptions: {
-          width: 980,
-          height: 760,
-          title: provider.name,
-          webPreferences: {
-            partition,
-            contextIsolation: true,
-            nodeIntegration: false,
-            sandbox: true
-          }
-        }
+        overrideBrowserWindowOptions: getChildWindowOptions(provider, partition)
       };
     }
 
@@ -276,16 +189,6 @@ function createProviderView(provider) {
 
   view.webContents.on("did-create-window", (childWindow) => {
     configureChildWindow(childWindow, provider, partition);
-  });
-
-  view.webContents.on("will-navigate", (event, url) => {
-    const nextUrl = event.url || url;
-    if (isGoogleAuthUrl(nextUrl)) openGoogleAuthWindow(event, provider, nextUrl);
-  });
-
-  view.webContents.on("will-redirect", (event, url) => {
-    const nextUrl = event.url || url;
-    if (isGoogleAuthUrl(nextUrl)) openGoogleAuthWindow(event, provider, nextUrl);
   });
 
   view.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
