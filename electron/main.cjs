@@ -12,10 +12,12 @@ const {
 } = require("electron");
 const { providers } = require("./providers.cjs");
 
-const SIDEBAR_WIDTH = 72;
-const COLLAPSED_SIDEBAR_WIDTH = 14;
+const SIDEBAR_WIDTH = 56;
+const COLLAPSED_SIDEBAR_WIDTH = 40;
 const BROWSER_PARTITION = "persist:ai-switchboard-browser";
 const CHROME_USER_AGENT = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
+const BG_LIGHT = "#f7f6f3";
+const BG_DARK = "#0c0c0c";
 
 app.setName("Helux");
 
@@ -54,11 +56,15 @@ function getActiveView() {
   return activeProviderId ? providerViews.get(activeProviderId) : null;
 }
 
+function getResolvedTheme() {
+  return theme === "auto" ? (nativeTheme.shouldUseDarkColors ? "dark" : "light") : theme;
+}
+
 function getState() {
   return {
     activeProviderId,
     theme,
-    resolvedTheme: theme === "auto" ? (nativeTheme.shouldUseDarkColors ? "dark" : "light") : theme,
+    resolvedTheme: getResolvedTheme(),
     sidebarVisible,
     providers: providers.map(({ id, name, url, icon, accent, shortcut }) => ({
       id,
@@ -71,8 +77,19 @@ function getState() {
   };
 }
 
+function applyWindowBackground() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const color = getResolvedTheme() === "dark" ? BG_DARK : BG_LIGHT;
+  try {
+    mainWindow.setBackgroundColor(color);
+  } catch {
+    // setBackgroundColor may be unavailable in older Electron versions.
+  }
+}
+
 function sendState() {
   if (!mainWindow || mainWindow.webContents.isDestroyed()) return;
+  applyWindowBackground();
   mainWindow.webContents.send("app:state", getState());
 }
 
@@ -172,7 +189,7 @@ function createProviderView(provider) {
     }
   });
 
-  view.setBackgroundColor("#faf8f2");
+  view.setBackgroundColor(getResolvedTheme() === "dark" ? BG_DARK : BG_LIGHT);
   view.webContents.setUserAgent(CHROME_USER_AGENT);
 
   view.webContents.setWindowOpenHandler(({ url }) => {
@@ -373,7 +390,7 @@ function createMainWindow() {
     minHeight: 620,
     title: "Helux",
     titleBarStyle: "hiddenInset",
-    backgroundColor: "#fbfaf6",
+    backgroundColor: getResolvedTheme() === "dark" ? BG_DARK : BG_LIGHT,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -407,6 +424,7 @@ function createMainWindow() {
   });
 
   mainWindow.once("ready-to-show", () => {
+    applyWindowBackground();
     mainWindow.show();
     mainWindow.focus();
   });
