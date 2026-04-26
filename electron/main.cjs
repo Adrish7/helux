@@ -12,10 +12,12 @@ const {
 } = require("electron");
 const { providers } = require("./providers.cjs");
 
-const SIDEBAR_WIDTH = 72;
-const COLLAPSED_SIDEBAR_WIDTH = 14;
+const SIDEBAR_WIDTH = 56;
+const COLLAPSED_SIDEBAR_WIDTH = 40;
 const BROWSER_PARTITION = "persist:ai-switchboard-browser";
 const CHROME_USER_AGENT = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
+const BG_LIGHT = "#f7f6f3";
+const BG_DARK = "#0c0c0c";
 
 app.setName("Helux");
 
@@ -26,7 +28,6 @@ let sidebarVisible = true;
 let chromeOverlayActive = false;
 const providerViews = new Map();
 const configuredPartitions = new Set();
-const authWindows = new Map();
 
 function getPreferencesPath() {
   return path.join(app.getPath("userData"), "preferences.json");
@@ -55,11 +56,15 @@ function getActiveView() {
   return activeProviderId ? providerViews.get(activeProviderId) : null;
 }
 
+function getResolvedTheme() {
+  return theme === "auto" ? (nativeTheme.shouldUseDarkColors ? "dark" : "light") : theme;
+}
+
 function getState() {
   return {
     activeProviderId,
     theme,
-    resolvedTheme: theme === "auto" ? (nativeTheme.shouldUseDarkColors ? "dark" : "light") : theme,
+    resolvedTheme: getResolvedTheme(),
     sidebarVisible,
     providers: providers.map(({ id, name, url, icon, accent, shortcut }) => ({
       id,
@@ -72,8 +77,19 @@ function getState() {
   };
 }
 
+function applyWindowBackground() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const color = getResolvedTheme() === "dark" ? BG_DARK : BG_LIGHT;
+  try {
+    mainWindow.setBackgroundColor(color);
+  } catch {
+    // setBackgroundColor may be unavailable in older Electron versions.
+  }
+}
+
 function sendState() {
   if (!mainWindow || mainWindow.webContents.isDestroyed()) return;
+  applyWindowBackground();
   mainWindow.webContents.send("app:state", getState());
 }
 
@@ -98,10 +114,6 @@ function getPartition(provider) {
   return BROWSER_PARTITION;
 }
 
-function getProviderOrigin(provider) {
-  return new URL(provider.url).origin;
-}
-
 function configureSession(partition) {
   if (configuredPartitions.has(partition)) return;
 
@@ -119,21 +131,22 @@ function isHttpUrl(url) {
   }
 }
 
-function isGoogleAuthUrl(url) {
-  try {
-    const parsedUrl = new URL(url);
-    return parsedUrl.hostname === "accounts.google.com";
-  } catch {
-    return false;
-  }
-}
-
-function isProviderUrl(provider, url) {
-  try {
-    return new URL(url).origin === getProviderOrigin(provider);
-  } catch {
-    return false;
-  }
+function getChildWindowOptions(provider, partition) {
+  return {
+    width: 980,
+    height: 760,
+    minWidth: 720,
+    minHeight: 560,
+    title: provider.name,
+    backgroundColor: "#fbfaf6",
+    webPreferences: {
+      partition,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      nativeWindowOpen: true
+    }
+  };
 }
 
 function configureChildWindow(childWindow, provider, partition) {
@@ -147,87 +160,19 @@ function configureChildWindow(childWindow, provider, partition) {
 
     return {
       action: "allow",
-      overrideBrowserWindowOptions: {
-        width: 980,
-        height: 760,
-        title: `Sign in to ${provider.name}`,
-        backgroundColor: "#fbfaf6",
-        webPreferences: {
-          partition,
-          contextIsolation: true,
-          nodeIntegration: false,
-          sandbox: true,
-          nativeWindowOpen: true
-        }
-      }
+      overrideBrowserWindowOptions: getChildWindowOptions(provider, partition)
     };
   });
 
   childWindow.webContents.on("did-create-window", (nextWindow) => {
     configureChildWindow(nextWindow, provider, partition);
   });
-}
 
-function createAuthWindow(provider, initialUrl) {
-  const partition = getPartition(provider);
-  configureSession(partition);
-
-  const existingWindow = authWindows.get(provider.id);
-  if (existingWindow && !existingWindow.isDestroyed()) {
-    existingWindow.show();
-    existingWindow.focus();
-    existingWindow.webContents.loadURL(initialUrl);
-    return;
-  }
-
-  const authWindow = new BrowserWindow({
-    parent: mainWindow,
-    width: 980,
-    height: 760,
-    minWidth: 720,
-    minHeight: 560,
-    title: `Sign in to ${provider.name}`,
-    backgroundColor: "#fbfaf6",
-    webPreferences: {
-      partition,
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      nativeWindowOpen: true
-    }
-  });
-
-  authWindows.set(provider.id, authWindow);
-  configureChildWindow(authWindow, provider, partition);
-
-  authWindow.on("closed", () => {
-    authWindows.delete(provider.id);
-  });
-
-  authWindow.webContents.on("did-navigate", (_event, url) => {
-    if (isProviderUrl(provider, url)) {
-      const providerView = providerViews.get(provider.id);
-      if (providerView && !providerView.webContents.isDestroyed()) {
-        providerView.webContents.loadURL(provider.url);
-      }
-      setTimeout(() => {
-        if (!authWindow.isDestroyed()) authWindow.close();
-      }, 750);
-    }
-  });
-
-  authWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+  childWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     if (isMainFrame && errorCode !== -3) {
-      console.error(`Auth window failed to load ${provider.name}: ${errorDescription} (${validatedURL})`);
+      console.error(`${provider.name} popup failed to load: ${errorDescription} (${validatedURL})`);
     }
   });
-
-  authWindow.webContents.loadURL(initialUrl);
-}
-
-function openGoogleAuthWindow(event, provider, url) {
-  event.preventDefault();
-  createAuthWindow(provider, url);
 }
 
 function createProviderView(provider) {
@@ -244,29 +189,14 @@ function createProviderView(provider) {
     }
   });
 
-  view.setBackgroundColor("#faf8f2");
+  view.setBackgroundColor(getResolvedTheme() === "dark" ? BG_DARK : BG_LIGHT);
   view.webContents.setUserAgent(CHROME_USER_AGENT);
 
   view.webContents.setWindowOpenHandler(({ url }) => {
-    if (isGoogleAuthUrl(url)) {
-      setImmediate(() => createAuthWindow(provider, url));
-      return { action: "deny" };
-    }
-
     if (isHttpUrl(url)) {
       return {
         action: "allow",
-        overrideBrowserWindowOptions: {
-          width: 980,
-          height: 760,
-          title: provider.name,
-          webPreferences: {
-            partition,
-            contextIsolation: true,
-            nodeIntegration: false,
-            sandbox: true
-          }
-        }
+        overrideBrowserWindowOptions: getChildWindowOptions(provider, partition)
       };
     }
 
@@ -276,16 +206,6 @@ function createProviderView(provider) {
 
   view.webContents.on("did-create-window", (childWindow) => {
     configureChildWindow(childWindow, provider, partition);
-  });
-
-  view.webContents.on("will-navigate", (event, url) => {
-    const nextUrl = event.url || url;
-    if (isGoogleAuthUrl(nextUrl)) openGoogleAuthWindow(event, provider, nextUrl);
-  });
-
-  view.webContents.on("will-redirect", (event, url) => {
-    const nextUrl = event.url || url;
-    if (isGoogleAuthUrl(nextUrl)) openGoogleAuthWindow(event, provider, nextUrl);
   });
 
   view.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
@@ -470,7 +390,7 @@ function createMainWindow() {
     minHeight: 620,
     title: "Helux",
     titleBarStyle: "hiddenInset",
-    backgroundColor: "#fbfaf6",
+    backgroundColor: getResolvedTheme() === "dark" ? BG_DARK : BG_LIGHT,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -504,6 +424,7 @@ function createMainWindow() {
   });
 
   mainWindow.once("ready-to-show", () => {
+    applyWindowBackground();
     mainWindow.show();
     mainWindow.focus();
   });
