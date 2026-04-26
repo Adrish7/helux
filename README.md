@@ -51,14 +51,38 @@ npm start
 ## Package for macOS
 
 ```bash
-npm run package:mac
+npm run make:mac
 ```
 
-The packaged `.app` is created under `dist/mac`.
+The downloadable `.dmg` and `.zip` files are created under `release/`.
 
-In this workspace, packaging writes to `/tmp/helux-dist` to avoid macOS
-file-provider extended attributes in the Documents folder interfering with code
-signing.
+## Download for macOS
+
+Go to the repository's GitHub Releases page and download the latest
+`Helux-...-mac-universal.dmg` file. Open the DMG, drag Helux into Applications,
+then open Helux from Applications.
+
+Release files are built automatically by GitHub Actions whenever a version tag
+is pushed:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The macOS build is universal, so the same download works on both Apple Silicon
+Macs and Intel Macs.
+
+### Gatekeeper note
+
+The public workflow can build a working app without Apple credentials, but macOS
+may warn that the app is from an unidentified developer. To make the first-open
+experience fully smooth for everyone, run a signed release with an Apple
+Developer ID certificate:
+
+```bash
+npm run make:mac:signed
+```
 
 ## Notes
 

@@ -9,13 +9,15 @@
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "build": "vite build",
     "start": "AI_SWITCHBOARD_USE_DIST=1 electron .",
-    "package:mac": "npm run build && electron-builder --mac dir --config.directories.output=/tmp/helux-dist",
-    "make:mac": "npm run build && electron-builder --mac dmg --config.directories.output=/tmp/helux-dist"
+    "package:mac": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --universal --config.directories.output=release",
+    "make:mac": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg zip --universal --config.directories.output=release",
+    "make:mac:signed": "npm run build && electron-builder --mac dmg zip --universal --config.directories.output=release"
   },
   "build": {
-    "appId": "com.local.helux",
+    "appId": "com.adrish.helux",
     "productName": "Helux",
     "executableName": "Helux",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "files": [
       "dist/**/*",
       "electron/**/*",
@@ -24,7 +26,7 @@
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "build/icon.icns",
-      "identity": "-",
+      "hardenedRuntime": true,
       "extendInfo": {
         "NSBluetoothAlwaysUsageDescription": "Helux may use Bluetooth security keys during sign-in.",
         "NSBluetoothPeripheralUsageDescription": "Helux may use Bluetooth security keys during sign-in.",
