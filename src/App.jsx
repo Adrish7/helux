@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Home, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Sun } from "lucide-react";
+import { Home, Monitor, Moon, PanelLeftClose, Sun } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -64,17 +64,6 @@ function App() {
       style={{ "--accent": accent }}
       data-active={activeProvider?.id ?? "home"}
     >
-      <button
-        className="floating-toggle"
-        type="button"
-        onClick={() => setSidebarVisible(true)}
-        title="Show sidebar (⌘B)"
-        aria-label="Show sidebar"
-        tabIndex={state.sidebarVisible ? -1 : 0}
-      >
-        <PanelLeftOpen size={15} strokeWidth={1.75} />
-      </button>
-
       <aside className="sidebar" aria-hidden={!state.sidebarVisible}>
         <div className="drag-zone" />
 

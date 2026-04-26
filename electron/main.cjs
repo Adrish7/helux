@@ -12,8 +12,8 @@ const {
 } = require("electron");
 const { providers } = require("./providers.cjs");
 
-const SIDEBAR_WIDTH = 56;
-const COLLAPSED_SIDEBAR_WIDTH = 40;
+const SIDEBAR_WIDTH = 68;
+const COLLAPSED_SIDEBAR_WIDTH = 0;
 const BROWSER_PARTITION = "persist:ai-switchboard-browser";
 const CHROME_USER_AGENT = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`;
 const BG_LIGHT = "#f7f6f3";

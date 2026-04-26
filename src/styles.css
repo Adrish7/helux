@@ -67,8 +67,7 @@ img {
 }
 
 .shell {
-  --rail-w: 56px;
-  --collapsed-w: 40px;
+  --rail-w: 68px;
   --top-safe: 30px;
   --accent: transparent;
   position: relative;
@@ -208,46 +207,6 @@ img {
   filter: invert(0.92);
 }
 
-/* ---------- Floating toggle (sidebar collapsed) ---------- */
-
-.floating-toggle {
-  -webkit-app-region: no-drag;
-  position: fixed;
-  top: 34px;
-  left: 5px;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  background: transparent;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-4px);
-  transition:
-    opacity 180ms ease,
-    transform 220ms cubic-bezier(0.32, 0.72, 0.24, 1),
-    background 140ms ease,
-    color 140ms ease;
-  z-index: 30;
-}
-
-.floating-toggle:hover,
-.floating-toggle:focus-visible {
-  background: var(--hover);
-  color: var(--text);
-  outline: none;
-}
-
-.shell.collapsed .floating-toggle {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-  transition-delay: 140ms;
-}
-
 /* ---------- Home view ---------- */
 
 .home {
@@ -261,10 +220,6 @@ img {
   z-index: 1;
   background: var(--bg);
   transition: padding 220ms cubic-bezier(0.32, 0.72, 0.24, 1);
-}
-
-.shell.collapsed .home {
-  padding-left: calc(var(--collapsed-w) + clamp(24px, 5vw, 48px));
 }
 
 .home-grid {
