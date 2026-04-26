@@ -58,9 +58,10 @@ The downloadable `.dmg` and `.zip` files are created under `release/`.
 
 ## Download for macOS
 
-Go to the repository's GitHub Releases page and download the latest
-`Helux-...-mac-universal.dmg` file. Open the DMG, drag Helux into Applications,
-then open Helux from Applications.
+Download the latest macOS release from
+[github.com/Adrish7/helux/releases](https://github.com/Adrish7/helux/releases).
+Click `Helux-...-mac-universal.dmg`, open the DMG, drag Helux into
+Applications, then open Helux from Applications.
 
 Release files are built automatically by GitHub Actions whenever a version tag
 is pushed:
