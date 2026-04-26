@@ -192,6 +192,24 @@ function createProviderView(provider) {
   view.setBackgroundColor(getResolvedTheme() === "dark" ? BG_DARK : BG_LIGHT);
   view.webContents.setUserAgent(CHROME_USER_AGENT);
 
+  // Intercept Cmd+B at the Electron layer before the page's JS can preventDefault
+  // it. Claude/Gemini/etc. bind their own Cmd+B handlers inside the page, which
+  // swallows the application menu accelerator. Catching it here guarantees the
+  // sidebar always toggles regardless of what the loaded site does.
+  view.webContents.on("before-input-event", (event, input) => {
+    if (
+      input.type === "keyDown" &&
+      input.meta &&
+      !input.shift &&
+      !input.alt &&
+      !input.control &&
+      input.key.toLowerCase() === "b"
+    ) {
+      event.preventDefault();
+      toggleSidebar();
+    }
+  });
+
   view.webContents.setWindowOpenHandler(({ url }) => {
     if (isHttpUrl(url)) {
       return {
