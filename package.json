@@ -10,6 +10,8 @@
     "build": "vite build",
     "start": "AI_SWITCHBOARD_USE_DIST=1 electron .",
     "package:mac": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --universal --config.directories.output=release",
+    "install:app": "node scripts/install-mac.cjs",
+    "update:app": "npm run package:mac && npm run install:app",
     "make:mac": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dmg zip --universal --config.directories.output=release",
     "make:mac:signed": "npm run build && electron-builder --mac dmg zip --universal --config.directories.output=release"
   },

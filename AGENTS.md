@@ -18,6 +18,12 @@ Helux is a small macOS Electron/Vite app that wraps several AI chat services in 
 - Renderer build: `npm run build`
 - Run built UI: `npm start`
 - Package macOS app: `npm run make:mac`
+- Build and replace the Spotlight-installed app: `npm run update:app`
+
+When a user expects a local code change to appear in the Helux app opened from
+Spotlight, finish with `npm run update:app`, not only `npm run build`. This safely
+replaces `/Applications/Helux.app`, refreshes Launch Services and Spotlight, and
+reopens the app without touching provider session data.
 
 If Electron behaves oddly in a shell, check whether `ELECTRON_RUN_AS_NODE` is set before assuming app code is broken.
 

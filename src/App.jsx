@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Home, Monitor, Moon, Paintbrush, PanelLeftClose, RotateCcw, Sun } from "lucide-react";
+import { Check, Home, Monitor, Moon, Paintbrush, PanelLeftClose, RotateCcw, Search, Sun } from "lucide-react";
 import { createRoot } from "react-dom/client";
+import { boostThemes } from "./boost-themes";
 import "./styles.css";
 
 const fallbackState = {
@@ -34,8 +35,83 @@ const boostFields = [
   { key: "accent", label: "Accent" }
 ];
 
+function boostsMatch(first, second) {
+  return boostFields.every((field) => first?.[field.key]?.toLowerCase() === second?.[field.key]?.toLowerCase());
+}
+
 function getBoost(providerBoosts, suggestedProviderBoosts, providerId) {
   return providerBoosts?.[providerId] ?? suggestedProviderBoosts?.[providerId] ?? fallbackBoost;
+}
+
+function ThemeLibrary({ provider, boost, boostEnabled, onApplyTheme }) {
+  const [query, setQuery] = useState("");
+  const activeThemeId = boostEnabled
+    ? boostThemes.find((theme) => boostsMatch(theme.palette, boost))?.id
+    : null;
+  const filteredThemes = boostThemes.filter((theme) =>
+    theme.name.toLowerCase().includes(query.trim().toLowerCase())
+  );
+
+  return (
+    <section className="theme-library" aria-labelledby="theme-library-title">
+      <div className="theme-library-heading">
+        <div>
+          <h1 id="theme-library-title">Themes for {provider.name}</h1>
+          <p>{boostThemes.length} palettes adapted from the tweakcn theme collection.</p>
+        </div>
+        {boostEnabled && <span>{activeThemeId ? "Preset active" : "Custom palette"}</span>}
+      </div>
+
+      <div className="theme-library-tools">
+        <label className="theme-search">
+          <Search size={14} strokeWidth={1.9} aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search themes"
+            aria-label="Search themes"
+          />
+        </label>
+        <span>{filteredThemes.length} shown</span>
+      </div>
+
+      <div className="theme-grid" role="group" aria-label="tweakcn themes">
+        {filteredThemes.map((theme) => {
+          const isActive = theme.id === activeThemeId;
+          return (
+            <button
+              key={theme.id}
+              className={`theme-card ${isActive ? "active" : ""}`}
+              type="button"
+              aria-pressed={isActive}
+              aria-label={`Apply ${theme.name} theme to ${provider.name}`}
+              onClick={() => onApplyTheme(theme.palette)}
+              style={{
+                "--theme-main": theme.palette.main,
+                "--theme-sidebar": theme.palette.sidebar,
+                "--theme-surface": theme.palette.surface,
+                "--theme-text": theme.palette.text,
+                "--theme-accent": theme.palette.accent
+              }}
+            >
+              <span className="theme-card-name">{theme.name}</span>
+              <span className="theme-swatches" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <span />
+              </span>
+              <span className="theme-card-check" aria-hidden="true">
+                <Check size={13} strokeWidth={2.2} />
+              </span>
+            </button>
+          );
+        })}
+        {!filteredThemes.length && <p className="theme-empty">No themes match “{query}”.</p>}
+      </div>
+    </section>
+  );
 }
 
 function HomeView({ providers, onOpenProvider, onOpenBoostStudio }) {
@@ -87,6 +163,7 @@ function BoostStudio({
   const selectedProvider = providers.find((provider) => provider.id === selectedProviderId) ?? providers[0];
   const boost = getBoost(providerBoosts, suggestedProviderBoosts, selectedProvider?.id);
   const boostEnabled = Boolean(providerBoosts?.[selectedProvider?.id]);
+  const activeTheme = boostEnabled ? boostThemes.find((theme) => boostsMatch(theme.palette, boost)) : null;
 
   if (!selectedProvider) return null;
 
@@ -123,13 +200,20 @@ function BoostStudio({
         </div>
       </div>
 
+      <ThemeLibrary
+        provider={selectedProvider}
+        boost={boost}
+        boostEnabled={boostEnabled}
+        onApplyTheme={(palette) => onChangeBoost(selectedProvider.id, palette)}
+      />
+
       <div className="boost-workspace">
         <div className="boost-controls" style={{ "--boost-accent": boost.accent }}>
           <div className="boost-panel-heading">
             <img className="boost-heading-icon" src={selectedProvider.icon} alt="" draggable="false" data-provider={selectedProvider.id} />
             <div>
               <h1>{selectedProvider.name}</h1>
-              <span>{boostEnabled ? "Live Boost" : "Boost Off"}</span>
+              <span>{boostEnabled ? `Live Boost · ${activeTheme?.name ?? "Custom"}` : "Boost Off"}</span>
             </div>
           </div>
 

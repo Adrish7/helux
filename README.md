@@ -48,6 +48,20 @@ npm run build
 npm start
 ```
 
+### Update the installed app
+
+After changing Helux locally, use this command to build the universal app,
+replace `/Applications/Helux.app`, refresh Spotlight, and reopen Helux:
+
+```bash
+npm run update:app
+```
+
+You can also double-click `Update Helux.command` in Finder. The installer verifies
+the new bundle before replacing the installed copy and restores the previous app
+if installation or launch verification fails. Preferences and provider sessions
+under Application Support are not touched.
+
 ## Package for macOS
 
 ```bash

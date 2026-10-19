@@ -829,7 +829,6 @@ function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 820,
-    minWidth: 860,
     minHeight: 620,
     title: "Helux",
     titleBarStyle: "hiddenInset",
