@@ -1,3 +1,5 @@
+![Helux switching between AI services, then recolouring them in Boost Studio](docs/helux-demo.gif)
+
 # Helux
 
 Helux is a simple macOS desktop app for keeping different LLM chats in one
